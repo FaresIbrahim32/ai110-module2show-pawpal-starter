@@ -76,6 +76,7 @@ class TimeSlot:
     end: datetime
 
     def overlaps(self, other: "TimeSlot") -> bool:
+        """Return True if this slot overlaps with another."""
         return self.start < other.end and self.end > other.start
 
 
@@ -84,13 +85,16 @@ class WeeklySchedule:
     available_slots: Dict[str, List[TimeSlot]] = field(default_factory=dict)
 
     def add_slot(self, day: str, slot: TimeSlot):
+        """Add an available time slot for the given weekday name."""
         self.available_slots.setdefault(day, []).append(slot)
 
     def remove_slot(self, day: str, slot: TimeSlot):
+        """Remove a specific time slot from the given weekday."""
         if day in self.available_slots:
             self.available_slots[day].remove(slot)
 
     def is_available(self, dt: datetime) -> bool:
+        """Return True if dt falls within any available slot on its weekday."""
         day = dt.strftime("%A")
         for slot in self.available_slots.get(day, []):
             if slot.start.time() <= dt.time() <= slot.end.time():
@@ -109,9 +113,11 @@ class Appointment:
     provider: Optional["CareProvider"] = field(default=None, repr=False)
 
     def cancel(self):
+        """Set the appointment status to CANCELLED."""
         self.status = AppointmentStatus.CANCELLED
 
     def complete(self):
+        """Set the appointment status to COMPLETED."""
         self.status = AppointmentStatus.COMPLETED
 
 
@@ -262,6 +268,7 @@ class RecommendedPlan:
     allergy_guidelines: List[AllergyGuideline] = field(default_factory=list)
 
     def add_task(self, task: Task):
+        """Append a task to this recommended plan."""
         self.tasks.append(task)
 
     def build_medication_schedule(self, pet: "Pet"):
@@ -328,18 +335,22 @@ class CarePlan:
     tasks: List[Task] = field(default_factory=list)
 
     def generate_plan(self, pet: "Pet", owner: "PetOwner"):
-        del pet, owner  # TODO: AI scheduling logic using pet conditions, meds, owner availability
+        """Placeholder for AI scheduling logic using pet conditions and owner availability."""
+        del pet, owner  # TODO: implement AI scheduling
 
     def add_task(self, task: Task):
+        """Append a task to this care plan."""
         self.tasks.append(task)
 
     def edit_task(self, task_id: str, updated_task: Task):
+        """Replace the task matching task_id with updated_task."""
         for i, t in enumerate(self.tasks):
             if t.task_id == task_id:
                 self.tasks[i] = updated_task
                 return
 
     def remove_task(self, task_id: str):
+        """Remove the task with the given task_id from this plan."""
         self.tasks = [t for t in self.tasks if t.task_id != task_id]
 
 
@@ -363,34 +374,41 @@ class Pet:
     # ── Conditions ────────────────────────────────────────────────────────────
 
     def add_condition(self, condition: Condition):
+        """Add a medical condition to this pet's record."""
         self.conditions.append(condition)
 
     def edit_condition(self, condition_name: str, updated: Condition):
+        """Replace the condition matching condition_name with updated."""
         for i, c in enumerate(self.conditions):
             if c.name == condition_name:
                 self.conditions[i] = updated
                 return
 
     def remove_condition(self, condition_name: str):
+        """Remove the condition with the given name from this pet's record."""
         self.conditions = [c for c in self.conditions if c.name != condition_name]
 
     # ── Adoption status ───────────────────────────────────────────────────────
 
     def set_adoption_status(self, status: AdoptionStatus):
+        """Update the pet's adoption status."""
         self.adoption_status = status
 
     # ── Appointments ──────────────────────────────────────────────────────────
 
     def add_appointment(self, appointment: Appointment):
+        """Add a new appointment to this pet's schedule."""
         self.appointments.append(appointment)
 
     def edit_appointment(self, appointment_id: str, updated: Appointment):
+        """Replace the appointment matching appointment_id with updated."""
         for i, a in enumerate(self.appointments):
             if a.appointment_id == appointment_id:
                 self.appointments[i] = updated
                 return
 
     def remove_appointment(self, appointment_id: str):
+        """Remove the appointment with the given ID from this pet's schedule."""
         self.appointments = [a for a in self.appointments
                              if a.appointment_id != appointment_id]
 
@@ -416,6 +434,7 @@ class Pet:
     # ── Prescriptions ─────────────────────────────────────────────────────────
 
     def add_prescription(self, prescription: Prescription):
+        """Attach an already-uploaded prescription to this pet."""
         self.prescriptions.append(prescription)
 
     def upload_prescription(self, prescription: Prescription, raw_content: bytes):
@@ -441,15 +460,18 @@ class PetOwner:
     # ── Auth ──────────────────────────────────────────────────────────────────
 
     def login(self, username: str, password: str) -> bool:
+        """Return True if the provided credentials match this owner's account."""
         return self.username == username and self.password == password
 
     # ── Pet management ────────────────────────────────────────────────────────
 
     def add_pet(self, pet: Pet):
+        """Register a pet under this owner and set its back-reference."""
         pet.owner = self
         self.pets.append(pet)
 
     def remove_pet(self, pet_name: str):
+        """Remove the pet with the given name from this owner's list."""
         self.pets = [p for p in self.pets if p.name != pet_name]
 
     def edit_pet_info(self, pet_name: str, **kwargs):
@@ -461,6 +483,7 @@ class PetOwner:
                 return
 
     def _get_pet(self, pet_name: str) -> Optional[Pet]:
+        """Return the pet with the given name, or None if not found."""
         for pet in self.pets:
             if pet.name == pet_name:
                 return pet
@@ -469,16 +492,19 @@ class PetOwner:
     # ── Appointment management (owner side) ───────────────────────────────────
 
     def add_appointment(self, pet_name: str, appointment: Appointment):
+        """Add an appointment to the named pet's schedule."""
         pet = self._get_pet(pet_name)
         if pet:
             pet.add_appointment(appointment)
 
     def edit_appointment(self, pet_name: str, appointment_id: str, updated: Appointment):
+        """Replace an appointment on the named pet's schedule."""
         pet = self._get_pet(pet_name)
         if pet:
             pet.edit_appointment(appointment_id, updated)
 
     def remove_appointment(self, pet_name: str, appointment_id: str):
+        """Remove an appointment from the named pet's schedule."""
         pet = self._get_pet(pet_name)
         if pet:
             pet.remove_appointment(appointment_id)
@@ -486,38 +512,46 @@ class PetOwner:
     # ── Allergy management ────────────────────────────────────────────────────
 
     def add_allergy(self, allergy: str):
+        """Add an allergy to the owner's list if not already present."""
         if allergy not in self.pet_allergies:
             self.pet_allergies.append(allergy)
 
     def remove_allergy(self, allergy: str):
+        """Remove an allergy from the owner's list."""
         self.pet_allergies = [a for a in self.pet_allergies if a != allergy]
 
     # ── Schedule management ───────────────────────────────────────────────────
 
     def edit_schedule(self, schedule: WeeklySchedule):
+        """Replace the owner's weekly availability with a new schedule."""
         self.availability = schedule
 
     def remove_schedule(self):
+        """Clear the owner's weekly availability."""
         self.availability = WeeklySchedule()
 
     # ── Care plan management ──────────────────────────────────────────────────
 
     def add_care_plan(self, plan: CarePlan):
+        """Add a care plan to the owner's list of plans."""
         self.care_plans.append(plan)
 
     def add_task(self, plan_id: str, task: Task):
+        """Add a task to the care plan matching plan_id."""
         for plan in self.care_plans:
             if plan.plan_id == plan_id:
                 plan.add_task(task)
                 return
 
     def edit_task(self, plan_id: str, task_id: str, updated: Task):
+        """Replace a task in the care plan matching plan_id."""
         for plan in self.care_plans:
             if plan.plan_id == plan_id:
                 plan.edit_task(task_id, updated)
                 return
 
     def remove_task(self, plan_id: str, task_id: str):
+        """Remove a task from the care plan matching plan_id."""
         for plan in self.care_plans:
             if plan.plan_id == plan_id:
                 plan.remove_task(task_id)
@@ -562,29 +596,35 @@ class CareProvider:
     # ── Auth ──────────────────────────────────────────────────────────────────
 
     def login(self, username: str, password: str) -> bool:
+        """Return True if the provided credentials match this provider's account."""
         return self.username == username and self.password == password
 
     # ── Patient management ────────────────────────────────────────────────────
 
     def add_patient(self, pet: Pet):
+        """Add a pet to this provider's patient list if not already present."""
         if pet not in self.patients:
             self.patients.append(pet)
 
     def remove_patient(self, pet_name: str):
+        """Remove the patient with the given name from this provider's list."""
         self.patients = [p for p in self.patients if p.name != pet_name]
 
     # ── Medication management ─────────────────────────────────────────────────
 
     def add_medication(self, pet: Pet, medication: Medication):
+        """Prescribe a new medication to the given pet."""
         pet.medications.append(medication)
 
     def edit_medication(self, pet: Pet, med_name: str, updated: Medication):
+        """Replace the medication matching med_name on the given pet."""
         for i, m in enumerate(pet.medications):
             if m.name == med_name:
                 pet.medications[i] = updated
                 return
 
     def remove_medication(self, pet: Pet, med_name: str):
+        """Remove the medication with the given name from the pet's record."""
         pet.medications = [m for m in pet.medications if m.name != med_name]
 
     # ── Appointment scheduling ────────────────────────────────────────────────
@@ -632,8 +672,10 @@ class CareProvider:
     # ── Clinic management ─────────────────────────────────────────────────────
 
     def add_clinic(self, clinic: CareClinic):
+        """Add a clinic to this provider's list of affiliated clinics."""
         self.affiliated_clinics.append(clinic)
 
     def search_clinics(self, species_category: SpeciesCategory) -> List[CareClinic]:
+        """Return affiliated clinics that treat the given species category."""
         return [c for c in self.affiliated_clinics
                 if species_category in c.species_treated]
