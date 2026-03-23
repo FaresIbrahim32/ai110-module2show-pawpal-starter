@@ -41,8 +41,19 @@ Three core actions a user must be able to do
     
 **a. Initial design**
 
-- Briefly describe your initial UML design.
-- What classes did you include, and what responsibilities did you assign to each?
+The initial UML design was built around four core entities derived from the system requirements: PetOwner, Pet, CareProvider, and CareClinic. Supporting classes were added to model domain concepts that each entity depends on: Condition, Medication, Appointment, Prescription, WeeklySchedule, CarePlan, and PlanTask. Two enumerations — SpeciesCategory and AdoptionStatus — were introduced to constrain valid values for species groupings and pet adoption states.
+
+Responsibilities assigned to each class:
+- **PetOwner**: Handles user authentication, manages their list of pets, stores personal allergy info and weekly availability, and owns the generated care plans.
+- **Pet**: Holds all pet-specific data including species, age, adoption status, and links to its conditions, medications, appointments, and prescriptions.
+- **Condition**: Represents a medical condition extracted from a parsed prescription document.
+- **Medication**: Stores dosage, frequency, and treatment window for a pet's active medications — managed by the CareProvider.
+- **Appointment**: Tracks scheduled vet or care visits, with a status field and a reference to the CareProvider. Conflict resolution logic (owner priority within 3 days) is checked against the owner's WeeklySchedule.
+- **Prescription**: Represents an uploaded file (PDF, DOC, DOCX) and its parsed text, from which Conditions are extracted.
+- **WeeklySchedule**: Stores the owner's fixed weekly time slots and exposes an availability check used during appointment scheduling.
+- **CarePlan**: A daily care plan generated for a PetOwner, broken into ordered PlanTask entries with scheduled times.
+- **CareProvider**: Handles provider authentication, tracks which species they treat, manages pet medications and appointments, and can search or add clinics.
+- **CareClinic**: Stores clinic name, address, and the species categories it serves — used by providers to find appropriate facilities for a given pet.
 
 **b. Design changes**
 
