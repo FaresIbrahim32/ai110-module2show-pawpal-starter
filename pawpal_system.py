@@ -129,7 +129,12 @@ class Task:
     scheduled_time: datetime
     pet_likes: bool          # False = pet dislikes but task is still required (e.g. shower)
     conflicted: bool = False
+    completed: bool = False
     notes: str = ""
+
+    def mark_complete(self):
+        """Mark this task as done."""
+        self.completed = True
 
     def check_conflict(self, owner: "PetOwner") -> bool:
         """Returns True if this task falls outside the owner's available slots."""
