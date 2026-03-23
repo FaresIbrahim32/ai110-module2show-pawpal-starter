@@ -8,14 +8,19 @@ classDiagram
         +List~String~ petAllergies
         +WeeklySchedule availability
         +List~CarePlan~ carePlans
+        +List~RecommendedPlan~ recommendedPlans
         +login(username, password) bool
         +addPet(pet: Pet)
         +removePet(petName: String)
         +editPetInfo(petName: String)
         +editSchedule(schedule: WeeklySchedule)
         +removeSchedule()
-        +searchProviders(species: SpeciesCategory)
         +addCarePlan(plan: CarePlan)
+        +addTask(planId: String, task: Task)
+        +editTask(planId: String, taskId: String, updated: Task)
+        +removeTask(planId: String, taskId: String)
+        +receiveRecommendedPlan(plan: RecommendedPlan)
+        +searchProviders(species: SpeciesCategory)
     }
 
     class Pet {
@@ -42,6 +47,41 @@ classDiagram
         +String notes
         +checkConflict(owner: PetOwner) bool
         +resolveConflict(owner: PetOwner) DateTime
+    }
+
+    class CarePlan {
+        +String planId
+        +Date planDate
+        +List~Task~ tasks
+        +generatePlan(pet: Pet, owner: PetOwner)
+        +addTask(task: Task)
+        +editTask(taskId: String, updated: Task)
+        +removeTask(taskId: String)
+    }
+
+    class RecommendedPlan {
+        +String planId
+        +Date planDate
+        +Pet pet
+        +CareProvider createdBy
+        +List~Task~ tasks
+        +List~MedicationScheduleItem~ medicationSchedule
+        +List~AllergyGuideline~ allergyGuidelines
+        +addTask(task: Task)
+        +buildMedicationSchedule(pet: Pet)
+        +buildAllergyGuidelines(owner: PetOwner)
+    }
+
+    class MedicationScheduleItem {
+        +Medication medication
+        +DateTime administrationTime
+        +String instructions
+    }
+
+    class AllergyGuideline {
+        +String allergy
+        +String handlingInstruction
+        +TaskType relatedTaskType
     }
 
     class Condition {
@@ -92,26 +132,19 @@ classDiagram
         +overlaps(other: TimeSlot) bool
     }
 
-    class CarePlan {
-        +String planId
-        +Date planDate
-        +List~Task~ tasks
-        +generatePlan(pet: Pet, owner: PetOwner)
-        +addTask(task: Task)
-        +editTask(taskId: String, updated: Task)
-        +removeTask(taskId: String)
-    }
-
     class CareProvider {
         +String username
         +String password
         +String displayName
         +List~SpeciesCategory~ speciesTreated
+        +List~Pet~ patients
+        +List~CareClinic~ affiliatedClinics
         +login(username, password) bool
         +addMedication(pet: Pet, med: Medication)
         +editMedication(pet: Pet, medName: String)
         +removeMedication(pet: Pet, medName: String)
         +addAppointment(pet: Pet, appt: Appointment, owner: PetOwner) bool
+        +createRecommendedPlan(planId, planDate, pet, owner) RecommendedPlan
         +addClinic(clinic: CareClinic)
         +searchClinics(species: SpeciesCategory)
     }
@@ -174,7 +207,8 @@ classDiagram
     %% Relationships
     PetOwner "1" --> "0..*" Pet : owns
     PetOwner "1" --> "1" WeeklySchedule : has
-    PetOwner "1" --> "0..*" CarePlan : has
+    PetOwner "1" --> "0..*" CarePlan : manages
+    PetOwner "1" --> "0..*" RecommendedPlan : receives
 
     Pet "1" --> "0..*" Condition : has
     Pet "1" --> "0..*" Medication : takes
@@ -185,11 +219,19 @@ classDiagram
 
     CarePlan "1" --> "0..*" Task : contains
     Task --> WeeklySchedule : conflict checked against
-
     WeeklySchedule "1" --> "0..*" TimeSlot : contains
+
+    RecommendedPlan "1" --> "0..*" Task : contains
+    RecommendedPlan "1" --> "0..*" MedicationScheduleItem : includes
+    RecommendedPlan "1" --> "0..*" AllergyGuideline : includes
+    RecommendedPlan --> Pet : for
+    RecommendedPlan --> CareProvider : created by
+
+    MedicationScheduleItem --> Medication : references
 
     CareProvider "0..*" --> "0..*" Pet : treats
     CareProvider "0..*" --> "0..*" CareClinic : affiliated with
+    CareProvider --> RecommendedPlan : creates
 
     Appointment --> CareProvider : scheduled with
 ```

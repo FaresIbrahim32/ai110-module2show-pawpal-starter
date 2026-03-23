@@ -169,7 +169,53 @@ class Prescription:
 
 
 @dataclass
+class MedicationScheduleItem:
+    """When and how a pet should take a specific medication."""
+    medication: Medication
+    administration_time: datetime       # exact time to give the medication
+    instructions: str                   # e.g. "with food", "30 min before meal"
+
+
+@dataclass
+class AllergyGuideline:
+    """Handling instruction for a task given the owner has a specific pet allergy."""
+    allergy: str                        # the owner's allergy (e.g. "cat dander")
+    handling_instruction: str           # e.g. "wear gloves", "use hypoallergenic shampoo"
+    related_task_type: Optional[TaskType] = None  # which task this guideline applies to
+
+
+@dataclass
+class RecommendedPlan:
+    """
+    A full-day care plan created by a CareProvider and sent to the PetOwner.
+    Built from:
+      - Tasks with scheduled times (what to do and when)
+      - Pet's active medications → medication schedule (when to administer each med)
+      - Owner's pet allergies → allergy guidelines (how to safely handle each task)
+    """
+    plan_id: str
+    plan_date: date
+    pet: "Pet"
+    created_by: "CareProvider"
+    tasks: List[Task] = field(default_factory=list)
+    medication_schedule: List[MedicationScheduleItem] = field(default_factory=list)
+    allergy_guidelines: List[AllergyGuideline] = field(default_factory=list)
+
+    def add_task(self, task: Task):
+        self.tasks.append(task)
+
+    def build_medication_schedule(self, pet: "Pet"):  # pyright: ignore[reportUnusedParameter]
+        """Populate medication_schedule from the pet's active medications."""
+        raise NotImplementedError  # TODO: derive administration times from medication frequency
+
+    def build_allergy_guidelines(self, owner: "PetOwner"):  # pyright: ignore[reportUnusedParameter]
+        """Populate allergy_guidelines from the owner's pet_allergies list."""
+        raise NotImplementedError  # TODO: map each allergy to safe-handling instructions per task
+
+
+@dataclass
 class CarePlan:
+    """Owner's working daily plan — editable by the owner."""
     plan_id: str
     plan_date: date
     tasks: List[Task] = field(default_factory=list)
@@ -242,6 +288,7 @@ class PetOwner:
     pets: List[Pet] = field(default_factory=list)
     availability: WeeklySchedule = field(default_factory=WeeklySchedule)
     care_plans: List[CarePlan] = field(default_factory=list)
+    recommended_plans: List[RecommendedPlan] = field(default_factory=list)
 
     def login(self, username: str, password: str) -> bool:
         return self.username == username and self.password == password
@@ -266,12 +313,38 @@ class PetOwner:
     def remove_schedule(self):
         self.availability = WeeklySchedule()
 
+    def add_care_plan(self, plan: CarePlan):
+        self.care_plans.append(plan)
+
+    # ── Task management (owner directly manages tasks within a care plan) ──
+
+    def add_task(self, plan_id: str, task: Task):
+        for plan in self.care_plans:
+            if plan.plan_id == plan_id:
+                plan.add_task(task)
+                return
+
+    def edit_task(self, plan_id: str, task_id: str, updated: Task):
+        for plan in self.care_plans:
+            if plan.plan_id == plan_id:
+                plan.edit_task(task_id, updated)
+                return
+
+    def remove_task(self, plan_id: str, task_id: str):
+        for plan in self.care_plans:
+            if plan.plan_id == plan_id:
+                plan.remove_task(task_id)
+                return
+
+    # ── Recommended plan inbox ──
+
+    def receive_recommended_plan(self, plan: RecommendedPlan):
+        """CareProvider pushes a recommended plan to the owner's inbox."""
+        self.recommended_plans.append(plan)
+
     def search_providers(self, species_category: SpeciesCategory) -> List["CareProvider"]:
         pass  # TODO: query available CareProviders by species category
         return []
-
-    def add_care_plan(self, plan: CarePlan):
-        self.care_plans.append(plan)
 
 
 @dataclass
@@ -322,6 +395,25 @@ class CareProvider:
         appointment.provider = self
         pet.add_appointment(appointment)
         return True
+
+    def create_recommended_plan(self, plan_id: str, plan_date: date,
+                                pet: Pet, owner: PetOwner) -> RecommendedPlan:
+        """
+        Build a RecommendedPlan for the owner by:
+          1. Accessing pet.medications to generate a medication schedule.
+          2. Accessing owner.pet_allergies to generate safe-handling guidelines.
+        Then deliver it to the owner's inbox via receive_recommended_plan().
+        """
+        plan = RecommendedPlan(
+            plan_id=plan_id,
+            plan_date=plan_date,
+            pet=pet,
+            created_by=self,
+        )
+        plan.build_medication_schedule(pet)
+        plan.build_allergy_guidelines(owner)
+        owner.receive_recommended_plan(plan)
+        return plan
 
     def add_clinic(self, clinic: CareClinic):
         self.affiliated_clinics.append(clinic)
