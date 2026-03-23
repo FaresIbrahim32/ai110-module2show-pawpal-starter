@@ -27,6 +27,12 @@ Three core actions a user must be able to do
             1.1 name rendered for pet owner on UI
         2. Species treated (equine -> horses , small_pets -> cats and dogs, livestock -> cattle , zoo-> wildlife animals (lions, tigers,etc))
             2.1 One provider can be for multiple species and can treat multiple pets
+    Task :
+        1. task type ( entered by user) one user can have many tasks
+        2. Pet likes or not ( maybe pet doesnt like it but needs to be done (showering))
+        3. time ( when it will be done , date and time)
+        4. Conflicted or not ( if conflcited wth Owner schedule then reschedule within 3 days if owner still not available , cancel owner's new appointment , pet gets priority)
+
     Care Clinic: 
         1.Name 
         2.Species treated
