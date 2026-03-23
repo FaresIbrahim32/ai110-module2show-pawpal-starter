@@ -1,7 +1,44 @@
 # PawPal+ Project Reflection
 
 ## 1. System Design
+Three core actions a user must be able to do 
+    1. Upload pet prescriptions in file formats (pdf,doc,docx)
+    2. Get a recommended plan on a full day of pet care planned out (approximate times of when to do each action)
+    3. Add or modify the plan tasks based on sudden changes in schedule
 
+    for this app's backend , we need 2 entities at least , Pet and Pet Owner.
+
+    Pet Owner (User):
+        1. User Auth ( username and password)
+        2. Number of pets owned ( one user can have many pets) and each pet's name and species
+        3. Owner Pet Allergies ( will be in recommended plan on what tasks to do / how to do them)
+        4. Availability (fixed schedule every week)
+    Pet :
+        1. Species (name and catgeory under which they fall) 
+        2. Age
+        3. Owner_name -> one pet can be owned by only one owner
+        4. Adoption status (stray , adopted , from_previous_owner ,etc )
+        5. Conditions (any medical history noted obtained from perspcriptions)
+        6. Medications (treating any medical conditions)
+        7. Upcoming Vet Appointments
+
+    Care Provider: 
+        1. User Auth (can log in as care giver and put info about oneslef)
+            1.1 name rendered for pet owner on UI
+        2. Species treated (equine -> horses , small_pets -> cats and dogs, livestock -> cattle , zoo-> wildlife animals (lions, tigers,etc))
+            2.1 One provider can be for multiple species and can treat multiple pets
+    Care Clinic: 
+        1.Name 
+        2.Species treated
+            2.1 Care provider can look for and add clinics based on current pet patient
+            2.2 some clinics are only for equine , small_pets etc 
+
+    Methods : 
+
+        Pet Owner registers how many pets he/she has . They also disclose any pet allegries they themselves have. They disclose their schedule avaialbility . They can add new pets , remove pets ,,edit pet info ,add appointments , remove appointments , edit appointments , and edit schedule and remove it. They can add/edit/remove condtions and add /edit/remove adoption status . User can search providers for care based on pet species
+
+        Care Provider can add/edit/remove pet medications . They can also add appointments but if that appointment is in conflict with Owner appointment within 3 days, cancel it -> Owner gets priority to cancel and resechudle if their new appointments is within 3 days , after that pet gets priority . Provider can add clinic if no clinics avaialbe for current pet patient . Provider can search clinics based on species treated
+    
 **a. Initial design**
 
 - Briefly describe your initial UML design.
