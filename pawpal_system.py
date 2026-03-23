@@ -1,5 +1,6 @@
 from enum import Enum
 from datetime import datetime, date
+from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 
 
@@ -40,39 +41,37 @@ class AppointmentStatus(Enum):
 
 
 # ─────────────────────────────────────────────
-# Supporting Classes
+# Supporting Dataclasses
 # ─────────────────────────────────────────────
 
+@dataclass
 class Condition:
-    def __init__(self, name: str, description: str, source_document: str):
-        self.name = name
-        self.description = description
-        self.source_document = source_document  # prescription file it came from
+    name: str
+    description: str
+    source_document: str  # prescription file it came from
 
 
+@dataclass
 class Medication:
-    def __init__(self, name: str, dosage: str, frequency: str,
-                 start_date: date, end_date: date):
-        self.name = name
-        self.dosage = dosage
-        self.frequency = frequency
-        self.start_date = start_date
-        self.end_date = end_date
+    name: str
+    dosage: str
+    frequency: str
+    start_date: date
+    end_date: date
 
 
+@dataclass
 class TimeSlot:
-    def __init__(self, start: datetime, end: datetime):
-        self.start = start
-        self.end = end
+    start: datetime
+    end: datetime
 
     def overlaps(self, other: "TimeSlot") -> bool:
         return self.start < other.end and self.end > other.start
 
 
+@dataclass
 class WeeklySchedule:
-    def __init__(self):
-        # key: day name (e.g. "Monday"), value: list of TimeSlots
-        self.available_slots: Dict[str, List[TimeSlot]] = {}
+    available_slots: Dict[str, List[TimeSlot]] = field(default_factory=dict)
 
     def add_slot(self, day: str, slot: TimeSlot):
         self.available_slots.setdefault(day, []).append(slot)
@@ -89,17 +88,15 @@ class WeeklySchedule:
         return False
 
 
+@dataclass
 class Appointment:
-    def __init__(self, appointment_id: str, date_time: datetime,
-                 location: str, appointment_type: AppointmentType,
-                 notes: str = ""):
-        self.appointment_id = appointment_id
-        self.date_time = date_time
-        self.location = location
-        self.appointment_type = appointment_type
-        self.notes = notes
-        self.status = AppointmentStatus.SCHEDULED
-        self.provider: Optional["CareProvider"] = None
+    appointment_id: str
+    date_time: datetime
+    location: str
+    appointment_type: AppointmentType
+    notes: str = ""
+    status: AppointmentStatus = AppointmentStatus.SCHEDULED
+    provider: Optional["CareProvider"] = field(default=None, repr=False)
 
     def cancel(self):
         self.status = AppointmentStatus.CANCELLED
@@ -108,15 +105,14 @@ class Appointment:
         self.status = AppointmentStatus.COMPLETED
 
 
+@dataclass
 class Prescription:
-    def __init__(self, file_id: str, file_name: str, file_format: FileFormat,
-                 upload_date: date):
-        self.file_id = file_id
-        self.file_name = file_name
-        self.file_format = file_format
-        self.upload_date = upload_date
-        self.extracted_text: str = ""
-        self.extracted_conditions: List[Condition] = []
+    file_id: str
+    file_name: str
+    file_format: FileFormat
+    upload_date: date
+    extracted_text: str = ""
+    extracted_conditions: List[Condition] = field(default_factory=list)
 
     def upload(self, raw_content: bytes):
         pass  # TODO: save file content
@@ -126,20 +122,19 @@ class Prescription:
         return self.extracted_conditions
 
 
+@dataclass
 class PlanTask:
-    def __init__(self, task_id: str, description: str,
-                 scheduled_time: datetime, notes: str = ""):
-        self.task_id = task_id
-        self.description = description
-        self.scheduled_time = scheduled_time
-        self.notes = notes
+    task_id: str
+    description: str
+    scheduled_time: datetime
+    notes: str = ""
 
 
+@dataclass
 class CarePlan:
-    def __init__(self, plan_id: str, plan_date: date):
-        self.plan_id = plan_id
-        self.plan_date = plan_date
-        self.tasks: List[PlanTask] = []
+    plan_id: str
+    plan_date: date
+    tasks: List[PlanTask] = field(default_factory=list)
 
     def generate_plan(self, pet: "Pet", owner: "PetOwner"):
         pass  # TODO: AI scheduling logic using pet conditions, meds, owner availability
@@ -158,23 +153,21 @@ class CarePlan:
 
 
 # ─────────────────────────────────────────────
-# Core Entities
+# Core Entity Dataclasses
 # ─────────────────────────────────────────────
 
+@dataclass
 class Pet:
-    def __init__(self, name: str, species: str,
-                 species_category: SpeciesCategory, age: int,
-                 adoption_status: AdoptionStatus):
-        self.name = name
-        self.species = species
-        self.species_category = species_category
-        self.age = age
-        self.adoption_status = adoption_status
-        self.owner: Optional["PetOwner"] = None
-        self.conditions: List[Condition] = []
-        self.medications: List[Medication] = []
-        self.appointments: List[Appointment] = []
-        self.prescriptions: List[Prescription] = []
+    name: str
+    species: str
+    species_category: SpeciesCategory
+    age: int
+    adoption_status: AdoptionStatus
+    owner: Optional["PetOwner"] = field(default=None, repr=False)
+    conditions: List[Condition] = field(default_factory=list)
+    medications: List[Medication] = field(default_factory=list)
+    appointments: List[Appointment] = field(default_factory=list)
+    prescriptions: List[Prescription] = field(default_factory=list)
 
     def add_condition(self, condition: Condition):
         self.conditions.append(condition)
@@ -202,15 +195,15 @@ class Pet:
         self.prescriptions.append(prescription)
 
 
+@dataclass
 class PetOwner:
-    def __init__(self, username: str, password: str, name: str):
-        self.username = username
-        self.password = password
-        self.name = name
-        self.pet_allergies: List[str] = []
-        self.pets: List[Pet] = []
-        self.availability = WeeklySchedule()
-        self.care_plans: List[CarePlan] = []
+    username: str
+    password: str
+    name: str
+    pet_allergies: List[str] = field(default_factory=list)
+    pets: List[Pet] = field(default_factory=list)
+    availability: WeeklySchedule = field(default_factory=WeeklySchedule)
+    care_plans: List[CarePlan] = field(default_factory=list)
 
     def login(self, username: str, password: str) -> bool:
         return self.username == username and self.password == password
@@ -243,23 +236,22 @@ class PetOwner:
         self.care_plans.append(plan)
 
 
+@dataclass
 class CareClinic:
-    def __init__(self, clinic_id: str, name: str, address: str,
-                 species_treated: List[SpeciesCategory]):
-        self.clinic_id = clinic_id
-        self.name = name
-        self.address = address
-        self.species_treated = species_treated
+    clinic_id: str
+    name: str
+    address: str
+    species_treated: List[SpeciesCategory] = field(default_factory=list)
 
 
+@dataclass
 class CareProvider:
-    def __init__(self, username: str, password: str, display_name: str):
-        self.username = username
-        self.password = password
-        self.display_name = display_name
-        self.species_treated: List[SpeciesCategory] = []
-        self.patients: List[Pet] = []
-        self.affiliated_clinics: List[CareClinic] = []
+    username: str
+    password: str
+    display_name: str
+    species_treated: List[SpeciesCategory] = field(default_factory=list)
+    patients: List[Pet] = field(default_factory=list)
+    affiliated_clinics: List[CareClinic] = field(default_factory=list)
 
     def login(self, username: str, password: str) -> bool:
         return self.username == username and self.password == password
@@ -287,9 +279,7 @@ class CareProvider:
         for existing in pet.appointments:
             if existing.status == AppointmentStatus.CANCELLED:
                 continue
-            delta = abs((appointment.date_time - existing.date_time))
-            if delta <= three_days:
-                # Owner priority: cancel provider appointment
+            if abs(appointment.date_time - existing.date_time) <= three_days:
                 appointment.cancel()
                 return False  # conflict — owner appointment takes priority
         appointment.provider = self
