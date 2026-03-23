@@ -118,31 +118,52 @@ for task in plan.tasks:
 
 TASK_ICONS = {
     TaskType.FEEDING:    "🍽 ",
-    TaskType.WALK:       "🦮",
-    TaskType.SHOWER:     "🚿",
-    TaskType.MEDICATION: "💊",
-    TaskType.GROOMING:   "✂️ ",
-    TaskType.PLAY:       "🎾",
-    TaskType.OTHER:      "📌",
+    TaskType.WALK:       "🦮 ",
+    TaskType.SHOWER:     "🚿 ",
+    TaskType.MEDICATION: "💊 ",
+    TaskType.GROOMING:   "✂️  ",
+    TaskType.PLAY:       "🎾 ",
+    TaskType.OTHER:      "📌 ",
 }
 
-print("=" * 52)
-print(f"  PawPal+  |  Today's Schedule  |  {today.strftime('%A, %b %d %Y')}")
-print(f"  Owner: {owner.name}  |  Pets: {', '.join(p.name for p in owner.pets)}")
-print("=" * 52)
+W = 56  # terminal width
 
-for task in sorted(plan.tasks, key=lambda t: t.scheduled_time):
-    icon   = TASK_ICONS.get(task.task_type, "📌")
-    t_str  = task.scheduled_time.strftime("%I:%M %p")
-    label  = task.task_type.value.capitalize()
-    status = " ⚠ CONFLICT" if task.conflicted else ""
-    liked  = "" if task.pet_likes else "  (pet dislikes — but required)"
-    print(f"  {t_str}  {icon}  {label:<12}{status}{liked}")
-    print(f"           {task.notes}")
-    print()
+def divider(char="─"):
+    print(char * W)
 
-print("=" * 52)
-print(f"  Total tasks: {len(plan.tasks)}")
-if owner.pet_allergies:
-    print(f"  Allergy reminders: {', '.join(owner.pet_allergies)}")
-print("=" * 52)
+def header():
+    divider("═")
+    print(f"  🐾  PawPal+  ·  Today's Schedule")
+    print(f"  📅  {today.strftime('%A, %B %d %Y')}")
+    print(f"  👤  Owner : {owner.name}")
+    pets_line = "  🐕  Pets  : " + "  ·  ".join(
+        f"{p.name} ({p.species})" for p in owner.pets
+    )
+    print(pets_line)
+    divider("═")
+
+def print_task(task: Task, index: int):
+    icon  = TASK_ICONS.get(task.task_type, "📌 ")
+    tstr  = task.scheduled_time.strftime("%I:%M %p")
+    label = task.task_type.value.upper()
+    print(f"  {index}.  {tstr}  {icon} {label}")
+    print(f"       📝 {task.notes}")
+    if not task.pet_likes:
+        print(f"       ⚠️  Pet dislikes this — but it's required")
+    if task.conflicted:
+        print(f"       🔴 CONFLICT with owner schedule — needs rescheduling")
+    divider()
+
+def footer():
+    print(f"  ✅  {len(plan.tasks)} tasks scheduled for today")
+    if owner.pet_allergies:
+        allergies = ", ".join(owner.pet_allergies)
+        print(f"  🤧  Allergy alert : {allergies}")
+    divider("═")
+
+# ── Render ─────────────────────────────────────────────
+
+header()
+for i, task in enumerate(sorted(plan.tasks, key=lambda t: t.scheduled_time), start=1):
+    print_task(task, i)
+footer()

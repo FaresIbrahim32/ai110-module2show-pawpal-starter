@@ -41,7 +41,7 @@ Three core actions a user must be able to do
 
     Methods : 
 
-        Pet Owner registers how many pets he/she has . They also disclose any pet allegries they themselves have. They disclose their schedule avaialbility . They can add new pets , remove pets ,,edit pet info ,add appointments , remove appointments , edit appointments , and edit schedule and remove it. They can add/edit/remove condtions and add /edit/remove adoption status . User can search providers for care based on pet species
+        Pet Owner registers how many pets he/she has . They also disclose any pet allegries they themselves have. They disclose their schedule avaialbility . They can add new pets , remove pets ,,edit pet info ,add appointments , remove appointments , edit appointments , and edit schedule and remove it. They can add/edit/remove condtions and add /edit/remove adoption status . User can search providers for care based on pet species. 
 
         Care Provider can add/edit/remove pet medications . They can also add appointments but if that appointment is in conflict with Owner appointment within 3 days, cancel it -> Owner gets priority to cancel and resechudle if their new appointments is within 3 days , after that pet gets priority . Provider can add clinic if no clinics avaialbe for current pet patient . Provider can search clinics based on species treated
     
