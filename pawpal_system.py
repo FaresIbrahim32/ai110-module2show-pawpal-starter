@@ -1,5 +1,5 @@
 from enum import Enum
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 
@@ -38,6 +38,16 @@ class AppointmentStatus(Enum):
     SCHEDULED = "scheduled"
     CANCELLED = "cancelled"
     COMPLETED = "completed"
+
+
+class TaskType(Enum):
+    FEEDING = "feeding"
+    WALK = "walk"
+    SHOWER = "shower"
+    MEDICATION = "medication"
+    GROOMING = "grooming"
+    PLAY = "play"
+    OTHER = "other"
 
 
 # ─────────────────────────────────────────────
@@ -106,6 +116,43 @@ class Appointment:
 
 
 @dataclass
+class Task:
+    """
+    A care task in the daily plan.
+    Conflict rule:
+      - If conflicted with owner's schedule, attempt to reschedule within 3 days.
+      - If owner is still unavailable after 3 days, pet gets priority —
+        the owner's conflicting appointment is cancelled.
+    """
+    task_id: str
+    task_type: TaskType
+    scheduled_time: datetime
+    pet_likes: bool          # False = pet dislikes but task is still required (e.g. shower)
+    conflicted: bool = False
+    notes: str = ""
+
+    def check_conflict(self, owner: "PetOwner") -> bool:
+        """Returns True if this task conflicts with the owner's weekly schedule."""
+        self.conflicted = not owner.availability.is_available(self.scheduled_time)
+        return self.conflicted
+
+    def resolve_conflict(self, owner: "PetOwner") -> Optional[datetime]:
+        """
+        Try to find a free slot within the next 3 days.
+        If none found, pet gets priority — returns None to signal owner
+        appointment should be cancelled by the caller.
+        """
+        for days_offset in range(1, 4):
+            candidate = self.scheduled_time + timedelta(days=days_offset)
+            if owner.availability.is_available(candidate):
+                self.scheduled_time = candidate
+                self.conflicted = False
+                return candidate
+        # Owner still unavailable after 3 days → pet priority
+        return None
+
+
+@dataclass
 class Prescription:
     file_id: str
     file_name: str
@@ -114,35 +161,26 @@ class Prescription:
     extracted_text: str = ""
     extracted_conditions: List[Condition] = field(default_factory=list)
 
-    def upload(self, raw_content: bytes):
-        pass  # TODO: save file content
+    def upload(self, raw_content: bytes):  # pyright: ignore[reportUnusedParameter]
+        raise NotImplementedError  # TODO: save file content
 
     def parse(self) -> List[Condition]:
-        pass  # TODO: extract conditions from extracted_text
-        return self.extracted_conditions
-
-
-@dataclass
-class PlanTask:
-    task_id: str
-    description: str
-    scheduled_time: datetime
-    notes: str = ""
+        raise NotImplementedError  # TODO: extract conditions from extracted_text
 
 
 @dataclass
 class CarePlan:
     plan_id: str
     plan_date: date
-    tasks: List[PlanTask] = field(default_factory=list)
+    tasks: List[Task] = field(default_factory=list)
 
     def generate_plan(self, pet: "Pet", owner: "PetOwner"):
-        pass  # TODO: AI scheduling logic using pet conditions, meds, owner availability
+        _, __ = pet, owner  # TODO: AI scheduling logic using pet conditions, meds, owner availability
 
-    def add_task(self, task: PlanTask):
+    def add_task(self, task: Task):
         self.tasks.append(task)
 
-    def edit_task(self, task_id: str, updated_task: PlanTask):
+    def edit_task(self, task_id: str, updated_task: Task):
         for i, t in enumerate(self.tasks):
             if t.task_id == task_id:
                 self.tasks[i] = updated_task
@@ -271,17 +309,16 @@ class CareProvider:
     def add_appointment(self, pet: Pet, appointment: Appointment,
                         owner: PetOwner) -> bool:
         """
-        Add appointment only if it does not conflict with an owner-scheduled
-        appointment within 3 days. Owner gets priority within that window.
+        Owner gets priority for scheduling conflicts.
+        Provider appointment is cancelled if it conflicts with an existing
+        owner appointment within 3 days.
         """
-        from datetime import timedelta
-        three_days = timedelta(days=3)
         for existing in pet.appointments:
             if existing.status == AppointmentStatus.CANCELLED:
                 continue
-            if abs(appointment.date_time - existing.date_time) <= three_days:
+            if abs(appointment.date_time - existing.date_time) <= timedelta(days=3):
                 appointment.cancel()
-                return False  # conflict — owner appointment takes priority
+                return False
         appointment.provider = self
         pet.add_appointment(appointment)
         return True

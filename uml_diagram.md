@@ -7,26 +7,41 @@ classDiagram
         +String name
         +List~String~ petAllergies
         +WeeklySchedule availability
-        +register()
-        +login()
+        +List~CarePlan~ carePlans
+        +login(username, password) bool
         +addPet(pet: Pet)
-        +removePet(petId: String)
-        +editPetInfo(petId: String)
+        +removePet(petName: String)
+        +editPetInfo(petName: String)
         +editSchedule(schedule: WeeklySchedule)
         +removeSchedule()
-        +searchProviders(species: String)
+        +searchProviders(species: SpeciesCategory)
+        +addCarePlan(plan: CarePlan)
     }
 
     class Pet {
         +String name
         +String species
-        +String speciesCategory
+        +SpeciesCategory speciesCategory
         +int age
         +AdoptionStatus adoptionStatus
         +addCondition(condition: Condition)
-        +editCondition(conditionId: String)
-        +removeCondition(conditionId: String)
+        +editCondition(conditionName: String)
+        +removeCondition(conditionName: String)
         +setAdoptionStatus(status: AdoptionStatus)
+        +addAppointment(appointment: Appointment)
+        +removeAppointment(appointmentId: String)
+        +addPrescription(prescription: Prescription)
+    }
+
+    class Task {
+        +String taskId
+        +TaskType taskType
+        +DateTime scheduledTime
+        +bool petLikes
+        +bool conflicted
+        +String notes
+        +checkConflict(owner: PetOwner) bool
+        +resolveConflict(owner: PetOwner) DateTime
     }
 
     class Condition {
@@ -47,43 +62,44 @@ classDiagram
         +String appointmentId
         +DateTime dateTime
         +String location
-        +String notes
-        +AppointmentType type
+        +AppointmentType appointmentType
         +AppointmentStatus status
+        +String notes
+        +cancel()
+        +complete()
     }
 
     class Prescription {
         +String fileId
         +String fileName
-        +FileFormat format
+        +FileFormat fileFormat
         +Date uploadDate
         +String extractedText
-        +upload()
-        +parse()
+        +upload(rawContent: bytes)
+        +parse() List~Condition~
     }
 
     class WeeklySchedule {
-        +Map~DayOfWeek, List~TimeSlot~~ availableSlots
-        +addSlot(day: DayOfWeek, slot: TimeSlot)
-        +removeSlot(day: DayOfWeek, slot: TimeSlot)
-        +isAvailable(dateTime: DateTime) bool
+        +Map~String, List~TimeSlot~~ availableSlots
+        +addSlot(day: String, slot: TimeSlot)
+        +removeSlot(day: String, slot: TimeSlot)
+        +isAvailable(dt: DateTime) bool
+    }
+
+    class TimeSlot {
+        +DateTime start
+        +DateTime end
+        +overlaps(other: TimeSlot) bool
     }
 
     class CarePlan {
         +String planId
-        +Date date
-        +List~PlanTask~ tasks
-        +generatePlan()
-        +addTask(task: PlanTask)
-        +editTask(taskId: String)
+        +Date planDate
+        +List~Task~ tasks
+        +generatePlan(pet: Pet, owner: PetOwner)
+        +addTask(task: Task)
+        +editTask(taskId: String, updated: Task)
         +removeTask(taskId: String)
-    }
-
-    class PlanTask {
-        +String taskId
-        +String description
-        +DateTime scheduledTime
-        +String notes
     }
 
     class CareProvider {
@@ -91,20 +107,20 @@ classDiagram
         +String password
         +String displayName
         +List~SpeciesCategory~ speciesTreated
-        +login()
-        +addMedication(petId: String, med: Medication)
-        +editMedication(medId: String)
-        +removeMedication(medId: String)
-        +addAppointment(petId: String, appt: Appointment)
+        +login(username, password) bool
+        +addMedication(pet: Pet, med: Medication)
+        +editMedication(pet: Pet, medName: String)
+        +removeMedication(pet: Pet, medName: String)
+        +addAppointment(pet: Pet, appt: Appointment, owner: PetOwner) bool
         +addClinic(clinic: CareClinic)
-        +searchClinics(species: String)
+        +searchClinics(species: SpeciesCategory)
     }
 
     class CareClinic {
         +String clinicId
         +String name
-        +List~SpeciesCategory~ speciesTreated
         +String address
+        +List~SpeciesCategory~ speciesTreated
     }
 
     class SpeciesCategory {
@@ -130,6 +146,31 @@ classDiagram
         DOCX
     }
 
+    class TaskType {
+        <<enumeration>>
+        FEEDING
+        WALK
+        SHOWER
+        MEDICATION
+        GROOMING
+        PLAY
+        OTHER
+    }
+
+    class AppointmentType {
+        <<enumeration>>
+        VET
+        GROOMING
+        CHECKUP
+    }
+
+    class AppointmentStatus {
+        <<enumeration>>
+        SCHEDULED
+        CANCELLED
+        COMPLETED
+    }
+
     %% Relationships
     PetOwner "1" --> "0..*" Pet : owns
     PetOwner "1" --> "1" WeeklySchedule : has
@@ -142,11 +183,13 @@ classDiagram
 
     Prescription "1" --> "0..*" Condition : extracts
 
-    CarePlan "1" --> "1..*" PlanTask : contains
+    CarePlan "1" --> "0..*" Task : contains
+    Task --> WeeklySchedule : conflict checked against
+
+    WeeklySchedule "1" --> "0..*" TimeSlot : contains
 
     CareProvider "0..*" --> "0..*" Pet : treats
     CareProvider "0..*" --> "0..*" CareClinic : affiliated with
 
     Appointment --> CareProvider : scheduled with
-    Appointment --> WeeklySchedule : conflicts checked against
 ```
