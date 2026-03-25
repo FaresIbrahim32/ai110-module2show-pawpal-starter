@@ -125,43 +125,53 @@ class Appointment:
 class Task:
     """
     A care task in the daily plan.
-    Conflict rule:
-      - If conflicted with owner's schedule, attempt to reschedule within 3 days.
-      - If owner is still unavailable after 3 days, pet gets priority —
-        the owner's conflicting appointment is cancelled.
+
+    Features:
+    - Conflict detection with owner schedule
+    - Recurring task support (daily / weekly)
     """
     task_id: str
     task_type: TaskType
     scheduled_time: datetime
-    pet_likes: bool          # False = pet dislikes but task is still required (e.g. shower)
+    pet_likes: bool
     conflicted: bool = False
     completed: bool = False
     notes: str = ""
 
-    def mark_complete(self):
-        """Mark this task as done."""
-        self.completed = True
-
     def check_conflict(self, owner: "PetOwner") -> bool:
-        """Returns True if this task falls outside the owner's available slots."""
+        """Return True if task is outside owner's availability."""
         self.conflicted = not owner.availability.is_available(self.scheduled_time)
         return self.conflicted
 
-    def resolve_conflict(self, owner: "PetOwner") -> Optional[datetime]:
+    def mark_complete(self) -> Optional["Task"]:
         """
-        Try to shift the task into an available slot within the next 3 days,
-        keeping the same time-of-day. If no slot is found the owner's appointment
-        loses priority — caller is responsible for cancelling it.
-        Returns the new datetime if rescheduled, None if pet gets priority.
+        Mark task as completed and generate next occurrence if recurring.
+
+        Supports:
+        - daily
+        - weekly
+
+        Returns:
+            Task or None
         """
-        for days_offset in range(1, 4):
-            candidate = self.scheduled_time + timedelta(days=days_offset)
-            if owner.availability.is_available(candidate):
-                self.scheduled_time = candidate
-                self.conflicted = False
-                return candidate
-        # Still no free slot after 3 days → pet priority
-        return None
+        self.completed = True
+
+        recurrence = getattr(self, "recurrence", None)
+
+        if recurrence == "daily":
+            next_time = self.scheduled_time + timedelta(days=1)
+        elif recurrence == "weekly":
+            next_time = self.scheduled_time + timedelta(days=7)
+        else:
+            return None
+
+        return Task(
+            task_id=f"{self.task_id}_next",
+            task_type=self.task_type,
+            scheduled_time=next_time,
+            pet_likes=self.pet_likes,
+            notes=self.notes + " (recurring)",
+        )
 
 
 @dataclass

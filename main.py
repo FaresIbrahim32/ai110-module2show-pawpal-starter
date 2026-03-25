@@ -1,4 +1,4 @@
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 
 from pawpal_system import (
     AdoptionStatus,
@@ -13,15 +13,109 @@ from pawpal_system import (
 )
 
 # ─────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────
+
+def make_time(day, h, m):
+    return datetime.combine(day, time(h, m))
+
+
+TASK_PRIORITY = {
+    TaskType.FEEDING: 1,
+    TaskType.MEDICATION: 1,
+    TaskType.WALK: 2,
+    TaskType.GROOMING: 3,
+    TaskType.SHOWER: 3,
+    TaskType.PLAY: 4,
+    TaskType.OTHER: 5,
+}
+
+
+def sort_tasks(tasks):
+    """
+    Sort tasks by time, conflict status, and priority.
+    """
+    return sorted(
+        tasks,
+        key=lambda t: (
+            t.scheduled_time,
+            not t.conflicted,
+            TASK_PRIORITY.get(t.task_type, 99),
+        )
+    )
+
+
+# ─────────────────────────────────────────────
+# Lightweight Conflict Detection
+# ─────────────────────────────────────────────
+
+def detect_conflicts_lightweight(tasks):
+    """
+    Detects scheduling conflicts without stopping execution.
+
+    A conflict occurs when two tasks share the same scheduled time.
+    Marks tasks as conflicted and returns warning messages.
+
+    Args:
+        tasks (list[Task]): List of tasks.
+
+    Returns:
+        list[str]: Warning messages describing conflicts.
+    """
+    warnings = []
+    seen = {}
+
+    for task in tasks:
+        key = task.scheduled_time
+
+        if key in seen:
+            other = seen[key]
+
+            task.conflicted = True
+            other.conflicted = True
+
+            warnings.append(
+                f"⚠️ Conflict: '{task.notes}' AND '{other.notes}' "
+                f"at {task.scheduled_time.strftime('%I:%M %p')}"
+            )
+        else:
+            seen[key] = task
+
+    return warnings
+
+
+# ─────────────────────────────────────────────
+# Recurring Task Handler
+# ─────────────────────────────────────────────
+
+def handle_task_completion(plan):
+    """
+    Processes completed tasks and creates the next occurrence
+    for recurring tasks.
+
+    Args:
+        plan (CarePlan): The care plan containing tasks.
+    """
+    new_tasks = []
+
+    for task in plan.tasks:
+        if getattr(task, "completed", False):
+            next_task = task.mark_complete()
+            if next_task:
+                new_tasks.append(next_task)
+
+    plan.tasks.extend(new_tasks)
+
+
+# ─────────────────────────────────────────────
 # Setup: Owner
 # ─────────────────────────────────────────────
 
-# Owner is available Monday–Friday 7 am – 9 pm
 schedule = WeeklySchedule()
 for day in ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday"):
     slot = TimeSlot(
-        start=datetime.combine(date.today(), time(7, 0)),
-        end=datetime.combine(date.today(), time(21, 0)),
+        start=make_time(date.today(), 7, 0),
+        end=make_time(date.today(), 21, 0),
     )
     schedule.add_slot(day, slot)
 
@@ -57,113 +151,118 @@ owner.add_pet(luna)
 owner.add_pet(rocky)
 
 # ─────────────────────────────────────────────
-# Setup: Care Plan with Tasks
+# Setup: Care Plan
 # ─────────────────────────────────────────────
 
 today = date.today()
 plan = CarePlan(plan_id="plan-001", plan_date=today)
 owner.add_care_plan(plan)
 
+# ─────────────────────────────────────────────
+# Tasks (WITH SAME-TIME CONFLICT)
+# ─────────────────────────────────────────────
+
 tasks = [
-    Task(
-        task_id="t1",
-        task_type=TaskType.FEEDING,
-        scheduled_time=datetime.combine(today, time(8, 0)),
-        pet_likes=True,
-        notes="Luna & Rocky — morning kibble",
-    ),
-    Task(
-        task_id="t2",
-        task_type=TaskType.WALK,
-        scheduled_time=datetime.combine(today, time(11, 30)),
-        pet_likes=True,
-        notes="Rocky — 30-min park walk",
-    ),
-    Task(
-        task_id="t3",
-        task_type=TaskType.SHOWER,
-        scheduled_time=datetime.combine(today, time(14, 0)),
-        pet_likes=False,
-        notes="Luna — monthly bath (wear gloves — cat dander allergy)",
-    ),
-    Task(
-        task_id="t4",
-        task_type=TaskType.FEEDING,
-        scheduled_time=datetime.combine(today, time(18, 0)),
-        pet_likes=True,
-        notes="Luna & Rocky — evening meal",
-    ),
-    Task(
-        task_id="t5",
-        task_type=TaskType.PLAY,
-        scheduled_time=datetime.combine(today, time(19, 30)),
-        pet_likes=True,
-        notes="Rocky — fetch session in the backyard",
-    ),
+    Task("t1", TaskType.FEEDING, make_time(today, 8, 0), True, "Luna breakfast"),
+    Task("t2", TaskType.WALK, make_time(today, 8, 0), True, "Rocky walk"),  # conflict
+    Task("t3", TaskType.SHOWER, make_time(today, 14, 0), False, "Luna bath"),
 ]
+
+# Add recurrence
+tasks[0].recurrence = "daily"
 
 for task in tasks:
     owner.add_task(plan.plan_id, task)
 
 # ─────────────────────────────────────────────
-# Check conflicts against owner's schedule
+# Conflict Detection
 # ─────────────────────────────────────────────
 
-for task in plan.tasks:
-    task.check_conflict(owner)
+warnings = detect_conflicts_lightweight(plan.tasks)
 
 # ─────────────────────────────────────────────
-# Print Today's Schedule
+# Simulate Task Completion
+# ─────────────────────────────────────────────
+
+tasks[0].completed = True  # complete recurring task
+handle_task_completion(plan)
+
+# ─────────────────────────────────────────────
+# UI
 # ─────────────────────────────────────────────
 
 TASK_ICONS = {
-    TaskType.FEEDING:    "🍽 ",
-    TaskType.WALK:       "🦮 ",
-    TaskType.SHOWER:     "🚿 ",
+    TaskType.FEEDING: "🍽 ",
+    TaskType.WALK: "🦮 ",
+    TaskType.SHOWER: "🚿 ",
     TaskType.MEDICATION: "💊 ",
-    TaskType.GROOMING:   "✂️  ",
-    TaskType.PLAY:       "🎾 ",
-    TaskType.OTHER:      "📌 ",
+    TaskType.GROOMING: "✂️ ",
+    TaskType.PLAY: "🎾 ",
+    TaskType.OTHER: "📌 ",
 }
 
-W = 56  # terminal width
+W = 60
+
 
 def divider(char="─"):
     print(char * W)
 
+
 def header():
     divider("═")
-    print(f"  🐾  PawPal+  ·  Today's Schedule")
-    print(f"  📅  {today.strftime('%A, %B %d %Y')}")
-    print(f"  👤  Owner : {owner.name}")
-    pets_line = "  🐕  Pets  : " + "  ·  ".join(
-        f"{p.name} ({p.species})" for p in owner.pets
-    )
-    print(pets_line)
+    print("🐾 PawPal+ · Smart Scheduler")
+    print(f"📅 {today.strftime('%A, %B %d %Y')}")
+    print(f"👤 Owner: {owner.name}")
+    print("🐕 Pets:", ", ".join(p.name for p in owner.pets))
     divider("═")
 
-def print_task(task: Task, index: int):
-    icon  = TASK_ICONS.get(task.task_type, "📌 ")
-    tstr  = task.scheduled_time.strftime("%I:%M %p")
-    label = task.task_type.value.upper()
-    print(f"  {index}.  {tstr}  {icon} {label}")
-    print(f"       📝 {task.notes}")
-    if not task.pet_likes:
-        print(f"       ⚠️  Pet dislikes this — but it's required")
+
+def print_task(task, i):
+    icon = TASK_ICONS.get(task.task_type, "📌 ")
+    tstr = task.scheduled_time.strftime("%I:%M %p")
+
+    print(f"{i}. {tstr} {icon} {task.task_type.value}")
+    print(f"   📝 {task.notes}")
+
     if task.conflicted:
-        print(f"       🔴 CONFLICT with owner schedule — needs rescheduling")
+        print("   🔴 Conflict detected")
+
+    if not task.pet_likes:
+        print("   ⚠️ Pet dislikes this")
+
     divider()
 
-def footer():
-    print(f"  ✅  {len(plan.tasks)} tasks scheduled for today")
+
+def footer(tasks):
+    print(f"✅ Total tasks: {len(tasks)}")
     if owner.pet_allergies:
-        allergies = ", ".join(owner.pet_allergies)
-        print(f"  🤧  Allergy alert : {allergies}")
+        print(f"🤧 Allergies: {', '.join(owner.pet_allergies)}")
     divider("═")
 
-# ── Render ─────────────────────────────────────────────
+
+# ─────────────────────────────────────────────
+# Render
+# ─────────────────────────────────────────────
 
 header()
-for i, task in enumerate(sorted(plan.tasks, key=lambda t: t.scheduled_time), start=1):
+
+if warnings:
+    print("\n🚨 Scheduling Warnings:")
+    for w in warnings:
+        print(w)
+    divider()
+
+sorted_tasks = sort_tasks(plan.tasks)
+
+for i, task in enumerate(sorted_tasks, 1):
     print_task(task, i)
-footer()
+
+footer(sorted_tasks)
+
+# ─────────────────────────────────────────────
+# Show Recurring Result
+# ─────────────────────────────────────────────
+
+print("\n🔁 After Completing Recurring Task:")
+for t in plan.tasks:
+    print(f"- {t.task_id} → {t.scheduled_time.strftime('%I:%M %p')}")
