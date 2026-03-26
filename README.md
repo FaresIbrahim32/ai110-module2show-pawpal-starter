@@ -42,6 +42,26 @@ pip install -r requirements.txt
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
 
+## Features
+
+### Scheduling algorithms
+
+- **Sorting by time** — tasks are always displayed in ascending `scheduled_time` order using a stable sort, so the daily plan reads chronologically regardless of the order tasks were added.
+- **Duplicate-time conflict detection** — before rendering the schedule, the app scans for tasks that share the exact same time slot and surfaces a `st.warning` banner for each pair, flagging both tasks as conflicted.
+- **Owner availability conflict detection** — each task's `check_conflict()` method compares its scheduled time against the owner's `WeeklySchedule` slots. Tasks outside the owner's available hours are blocked at entry and re-checked on every render.
+- **Daily recurrence** — marking a daily task complete automatically generates a new task for the following day (`scheduled_time + 1 day`), keeping the plan self-replenishing without manual re-entry.
+- **Weekly recurrence** — same mechanism as daily recurrence but advances by 7 days, supporting once-a-week care routines like grooming or vet check-ins.
+- **Medication schedule generation** — `RecommendedPlan.build_medication_schedule()` maps a medication's frequency string (e.g. "twice daily", "every 8 hours") to a list of administration times, producing a full day's dose schedule automatically.
+- **Allergy-aware guidelines** — `RecommendedPlan.build_allergy_guidelines()` cross-references the owner's declared allergies against a keyword map to produce per-task safety instructions (e.g. "wear a dust mask during bath time" for a dander allergy).
+- **Provider appointment conflict guard** — `CareProvider.add_appointment()` cancels any proposed appointment that falls within 3 days of an existing owner-scheduled appointment, preventing double-booking.
+
+### UI features
+
+- Sorted schedule table (`st.table`) showing time, task, pet preference, and status at a glance.
+- Per-task `st.success` / `st.warning` / `st.error` badges reflecting real-time conflict and completion state.
+- Owner and Care Provider roles with separate consoles.
+- Inline task add/remove/complete with live re-render.
+
 ## Testing PawPal+
 
 ### Run the test suite
