@@ -72,13 +72,21 @@ Responsibilities assigned to each class:
 
 **a. Constraints and priorities**
 
-- What constraints does your scheduler consider (for example: time, priority, preferences)?
-- How did you decide which constraints mattered most?
+The scheduler considers three constraints when placing a task on the daily plan:
+
+1. **Owner availability** — the most important constraint. Each task's `scheduled_time` is checked against the owner's `WeeklySchedule` (fixed time slots per weekday). If a task falls outside those slots, `check_conflict()` flags it and the task is blocked from being added. This was prioritised first because a care task that the owner cannot physically perform is useless, regardless of how well everything else is planned.
+
+2. **Duplicate-time conflicts** — two tasks cannot occupy the exact same time slot. `detect_conflicts_lightweight()` scans the sorted task list and flags any pair sharing an identical `scheduled_time`. This prevents the schedule from being ambiguous or physically impossible to follow.
+
+3. **Pet preferences** — each task carries a `pet_likes` boolean. Tasks the pet dislikes (e.g. showering) are still allowed but are surfaced with a visible warning in the UI. This is a soft constraint: it informs the owner without blocking the task, because some unpleasant tasks (medication, grooming) are medically necessary.
+
+Owner availability was treated as the hardest constraint because it gates everything else — if the owner is unavailable, no amount of pet preference or time optimisation matters. Duplicate-time conflicts come second because they make the plan logically inconsistent. Pet preferences are last because they are advisory.
 
 **b. Tradeoffs**
 
-- Describe one tradeoff your scheduler makes.
-- Why is that tradeoff reasonable for this scenario?
+The main tradeoff is **blocking vs. warning for pet preferences**. A stricter scheduler might refuse to add a task the pet dislikes unless it is classified as medically required. Instead, the system allows any task regardless of preference and surfaces a `st.warning` banner so the owner can make the final call.
+
+This is reasonable for this scenario because the owner knows their pet best. A disliked task might still be the right choice (a cat that hates baths still needs one). Blocking it outright would make the app feel paternalistic and reduce its utility. The warning approach respects owner judgement while still making the friction visible.
 
 ---
 
@@ -100,13 +108,31 @@ Responsibilities assigned to each class:
 
 **a. What you tested**
 
-- What behaviors did you test?
-- Why were these tests important?
+Ten tests were written covering three core scheduler behaviors:
+
+- **Task completion** (`test_mark_complete_changes_status`) — verified that calling `mark_complete()` flips the `completed` flag from `False` to `True`. This is the most basic state transition in the system; if it breaks, the entire "mark done" flow breaks with it.
+
+- **Task addition** (`test_adding_task_increases_count`) — confirmed that `PetOwner.add_task()` correctly routes a task into the right `CarePlan` and grows its list. Important because the owner and plan are loosely coupled through an ID lookup, which could silently fail.
+
+- **Sorting correctness** (`test_tasks_sorted_chronologically`, `test_two_tasks_at_same_time_both_present`) — verified that tasks sort into ascending time order regardless of insertion order, and that two tasks at the same time both survive the sort without either being dropped. Sorting is the foundation of a readable daily schedule.
+
+- **Recurrence logic** (`test_daily_recurrence_creates_next_day_task`, `test_weekly_recurrence_creates_next_week_task`, `test_no_recurrence_returns_none`) — confirmed that daily and weekly recurring tasks produce a correctly offset successor on completion, and that tasks with no recurrence attribute return `None`. This matters because `recurrence` is set dynamically rather than declared in the dataclass, making it easy to accidentally omit.
+
+- **Conflict detection** (`test_conflict_flagged_when_owner_has_no_availability`, `test_no_conflict_when_task_falls_within_available_slot`, `test_two_tasks_same_time_both_flagged_when_no_availability`) — verified the full range of the availability check: no slots → always conflicted, task inside a slot → not conflicted, two same-time tasks → both independently flagged. These tests protect the most safety-critical logic in the system.
+
+These tests were important because they exercise the scheduler's three guarantees: a plan is in order, recurring tasks never require manual re-entry, and the owner's time is always respected.
 
 **b. Confidence**
 
-- How confident are you that your scheduler works correctly?
-- What edge cases would you test next if you had more time?
+**★★★★☆ (4 / 5)**
+
+Confidence is high for the core scheduling path. All 10 tests pass and cover both happy paths and the main edge cases (empty availability, duplicate times, chain of recurrences). The one area of fragility is the `recurrence` attribute: it is not a declared `dataclass` field, so it must be manually set with `t.recurrence = "daily"`. A contributor who creates a `Task` without knowing this contract will silently get a non-recurring task with no error. Formalising `recurrence` as an optional field with a default of `None` would close that gap and push confidence to 5/5.
+
+Edge cases to test next with more time:
+- A recurring task that has already been completed multiple times in a chain (ID collision risk: `t1_next_next_next`).
+- `build_medication_schedule()` when the pet has zero active medications on the plan date (empty output, no crash).
+- `build_allergy_guidelines()` with an allergy keyword that matches multiple entries in `_ALLERGY_TASK_MAP` simultaneously.
+- `get_upcoming_appointments()` when all appointments are cancelled or completed (should return an empty list, not error).
 
 ---
 
