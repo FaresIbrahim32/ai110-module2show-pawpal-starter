@@ -42,6 +42,50 @@ pip install -r requirements.txt
 6. Connect your logic to the Streamlit UI in `app.py`.
 7. Refine UML so it matches what you actually built.
 
+## Demo
+
+### Pet Owner
+
+The owner can register pets, manage allergies, add tasks to their daily care plan, and track medications and upcoming appointments.
+
+**Dashboard overview**
+![Owner Dashboard](pet_owner/owner_dashboard.png)
+
+**Adding a pet**
+![Adding a Pet](pet_owner/owner_pet.png)
+
+**Adding a task to the daily plan**
+![Adding a Task](pet_owner/owner_addin_task.png)
+
+**Viewing pet medications**
+![Pet Medications](pet_owner/pet_medication.png)
+
+---
+
+### Scheduler (Vet / Care Provider)
+
+The care provider (vet) can claim patients, add medications, propose appointments, add tasks to an owner's plan, and send full recommended care plans to the owner's inbox.
+
+**Claiming a patient**
+![Claiming a Patient](scheduler/scheduler_claim.png)
+
+**Adding a task to the owner's plan**
+![Adding a Task](scheduler/scheduler_adding_task.png)
+
+**Adding a medication**
+![Adding Medication](scheduler/scheduler_adding_medication.png)
+
+**Adding a clinic for small pets (cats, dogs)**
+![Adding a Clinic](scheduler/scheduler_adding_clinic_for_small_pets_like_cats.png)
+
+**Creating a recommended plan**
+![Creating a Plan](scheduler/scheduler_creating_plan.png)
+
+**Plan received in owner's inbox**
+![Plan Applied](scheduler/plan_added_from_scheduler.png)
+
+---
+
 ## Features
 
 ### Scheduling algorithms
