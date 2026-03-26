@@ -64,8 +64,11 @@ Responsibilities assigned to each class:
 **b. Design changes**
 
 - Did your design change during implementation?
+Yes my uml diagram changed quite a lot
 - If yes, describe at least one change and why you made it.
+Initially I had planned user auth for both owner and provider in my first uml diagram, however after testing it out I figured it is way too complex to add for the app . I also figured I may use pypdf to let users upload a dummy prescreiption and have medication text extracted , safe to say that was also complex
 
+Also I had task manipulation initially as a method for owner and provider but when I went back to the project guidlines it was clear Task was its own entity . I also added some more objects like Clinic and Allergies
 ---
 
 ## 2. Scheduling Logic and Tradeoffs
@@ -95,12 +98,19 @@ This is reasonable for this scenario because the owner knows their pet best. A d
 **a. How you used AI**
 
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
+
+I used Claude Code and Copoilot to map out the database schema of the entities that I defined initiallly and adjusting the uml diagram based on that . I used Gemini to help me with choosing sorting algorithms and debugging its implementation . Most of the database methods were debugged by Copoilot based on my prompts on how each type of user (owner or provider) should interact with the app and see his/her methods in action. I also used Claude Code to write test cases with Pytest
+
 - What kinds of prompts or questions were most helpful?
 
-**b. Judgment and verification**
 
+**b. Judgment and verification**
 - Describe one moment where you did not accept an AI suggestion as-is.
+
+GPT 5 with Copoilot kept ignoring my prompts about owner dashboard and how it should it look (as in an owner should see medication, appointments and other info) and kept and initially suggested appointment scheduling only on Provider's side to which I had to stop it in the midst of its generation and push back on this
+
 - How did you evaluate or verify what the AI suggested?
+I kept running the streamlit app and putting dummy info to test the methods I had defined already in my schema
 
 ---
 
@@ -141,11 +151,14 @@ Edge cases to test next with more time:
 **a. What went well**
 
 - What part of this project are you most satisfied with?
+ Overall database is a bit more nunaced that just pets and their owners and some scheudler . Maybe I can extend this into a full on react native project beacuase of how much detail I added to the schema
 
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
+Maybe instead of streamlit , I would choose Vue or any other rich library that would make UX a bit more lively
 
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+Always link the markdown file under the agents dir when prompting so that the model knows how it should generate code properly
