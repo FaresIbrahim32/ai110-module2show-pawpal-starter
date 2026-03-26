@@ -252,4 +252,15 @@ classDiagram
     CareProvider --> RecommendedPlan : creates
 
     Appointment --> CareProvider : scheduled with
+
+    %% Enum usage relationships
+    Pet ..> SpeciesCategory : uses
+    Pet ..> AdoptionStatus : uses
+    CareProvider ..> SpeciesCategory : uses
+    CareClinic ..> SpeciesCategory : uses
+    Task ..> TaskType : uses
+    AllergyGuideline ..> TaskType : uses
+    Appointment ..> AppointmentType : uses
+    Appointment ..> AppointmentStatus : uses
+    Prescription ..> FileFormat : uses
 ```
