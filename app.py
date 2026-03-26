@@ -697,17 +697,46 @@ TASK_ICONS = {
     TaskType.OTHER:      "📌",
 }
 
+# Sort tasks chronologically using the same key as the Scheduler
 sorted_tasks = sorted(plan.tasks, key=lambda t: t.scheduled_time)
 
 if not sorted_tasks:
     st.info("No tasks yet — add one above.")
 else:
+    # ── 1. Refresh owner-availability conflict flags ───────────────────────
+    for task in sorted_tasks:
+        task.check_conflict(owner)
+
+    # ── 2. Detect same-time duplicate conflicts ────────────────────────────
+    conflict_warnings = detect_conflicts_lightweight(sorted_tasks)
+    if conflict_warnings:
+        for msg in conflict_warnings:
+            st.warning(msg)
+    else:
+        st.success("No scheduling conflicts detected.")
+
+    # ── 3. Summary table ──────────────────────────────────────────────────
+    import pandas as pd
+    table_rows = []
+    for task in sorted_tasks:
+        icon = TASK_ICONS.get(task.task_type, "📌")
+        status = "✅ Done" if task.completed else ("⚠️ Conflict" if task.conflicted else "🕐 Pending")
+        table_rows.append({
+            "Time": task.scheduled_time.strftime("%I:%M %p"),
+            "Task": f"{icon} {task.task_type.value.capitalize()}",
+            "Pet Likes": "Yes" if task.pet_likes else "No",
+            "Status": status,
+            "Notes": task.notes or "—",
+        })
+    st.table(pd.DataFrame(table_rows))
+
+    st.divider()
+
+    # ── 4. Detailed interactive task rows ─────────────────────────────────
     for idx, task in enumerate(sorted_tasks):
         icon  = TASK_ICONS.get(task.task_type, "📌")
         tstr  = task.scheduled_time.strftime("%I:%M %p")
         label = task.task_type.value.capitalize()
-        # Combine task_id with position index so keys stay unique
-        # even when task_counter resets and IDs collide across sessions.
         unique_suffix = f"{task.task_id}_{idx}"
 
         with st.container():
@@ -721,8 +750,8 @@ else:
                 if not task.pet_likes:
                     st.warning("Pet dislikes this — but it's required.")
                 if task.conflicted:
-                    st.error("Conflict with owner schedule — needs rescheduling.")
-                if task.completed:
+                    st.error("Outside owner availability — needs rescheduling.")
+                elif task.completed:
                     st.success("Completed ✓")
             with col3:
                 if not task.completed:
@@ -736,5 +765,10 @@ else:
                     st.rerun()
             st.divider()
 
+    # ── 5. Progress summary ───────────────────────────────────────────────
     completed = sum(1 for t in plan.tasks if t.completed)
-    st.caption(f"✅ {completed}/{len(plan.tasks)} tasks completed")
+    conflicts = sum(1 for t in plan.tasks if t.conflicted)
+    if completed == len(plan.tasks):
+        st.success(f"All {len(plan.tasks)} tasks completed!")
+    else:
+        st.caption(f"✅ {completed}/{len(plan.tasks)} tasks completed  |  ⚠️ {conflicts} conflict(s)")
