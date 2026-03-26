@@ -6,6 +6,7 @@ classDiagram
         +String password
         +String name
         +List~String~ petAllergies
+        +List~Pet~ pets
         +WeeklySchedule availability
         +List~CarePlan~ carePlans
         +List~RecommendedPlan~ recommendedPlans
@@ -13,6 +14,11 @@ classDiagram
         +addPet(pet: Pet)
         +removePet(petName: String)
         +editPetInfo(petName: String)
+        +addAppointment(petName: String, appointment: Appointment)
+        +editAppointment(petName: String, appointmentId: String, updated: Appointment)
+        +removeAppointment(petName: String, appointmentId: String)
+        +addAllergy(allergy: String)
+        +removeAllergy(allergy: String)
         +editSchedule(schedule: WeeklySchedule)
         +removeSchedule()
         +addCarePlan(plan: CarePlan)
@@ -29,13 +35,21 @@ classDiagram
         +SpeciesCategory speciesCategory
         +int age
         +AdoptionStatus adoptionStatus
+        +List~Condition~ conditions
+        +List~Medication~ medications
+        +List~Appointment~ appointments
+        +List~Prescription~ prescriptions
         +addCondition(condition: Condition)
-        +editCondition(conditionName: String)
+        +editCondition(conditionName: String, updated: Condition)
         +removeCondition(conditionName: String)
         +setAdoptionStatus(status: AdoptionStatus)
         +addAppointment(appointment: Appointment)
+        +editAppointment(appointmentId: String, updated: Appointment)
         +removeAppointment(appointmentId: String)
+        +getUpcomingAppointments(fromDate: Date) List~Appointment~
+        +getActiveMedications(onDate: Date) List~Medication~
         +addPrescription(prescription: Prescription)
+        +uploadPrescription(prescription: Prescription, rawContent: bytes)
     }
 
     class Task {
@@ -44,9 +58,10 @@ classDiagram
         +DateTime scheduledTime
         +bool petLikes
         +bool conflicted
+        +bool completed
         +String notes
         +checkConflict(owner: PetOwner) bool
-        +resolveConflict(owner: PetOwner) DateTime
+        +markComplete() Task
     }
 
     class CarePlan {
@@ -115,6 +130,7 @@ classDiagram
         +FileFormat fileFormat
         +Date uploadDate
         +String extractedText
+        +List~Condition~ extractedConditions
         +upload(rawContent: bytes)
         +parse() List~Condition~
     }
@@ -140,13 +156,15 @@ classDiagram
         +List~Pet~ patients
         +List~CareClinic~ affiliatedClinics
         +login(username, password) bool
+        +addPatient(pet: Pet)
+        +removePatient(petName: String)
         +addMedication(pet: Pet, med: Medication)
-        +editMedication(pet: Pet, medName: String)
+        +editMedication(pet: Pet, medName: String, updated: Medication)
         +removeMedication(pet: Pet, medName: String)
         +addAppointment(pet: Pet, appt: Appointment, owner: PetOwner) bool
         +createRecommendedPlan(planId, planDate, pet, owner) RecommendedPlan
         +addClinic(clinic: CareClinic)
-        +searchClinics(species: SpeciesCategory)
+        +searchClinics(species: SpeciesCategory) List~CareClinic~
     }
 
     class CareClinic {
